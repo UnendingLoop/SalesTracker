@@ -57,5 +57,5 @@ VALUES ('mother'),
     ('father'),
     ('son'),
     ('daughter'),
-    ('unknown')
+    ('other')
 ON CONFLICT (fam_member) DO NOTHING;
