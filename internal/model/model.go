@@ -13,7 +13,7 @@ type Operation struct {
 	Description *string
 }
 
-var FamilyMap = map[string]struct{}{FamMother: {}, FamFather: {}, FamDaughter: {}, FamSon: {}}
+var ActorsMap = map[string]struct{}{FamMother: {}, FamFather: {}, FamDaughter: {}, FamSon: {}}
 
 const (
 	FamMother   = "mother"

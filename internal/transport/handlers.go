@@ -20,7 +20,7 @@ type OperationHandler struct {
 type OperationService interface {
 	CreateOperation(ctx context.Context, newOp *model.Operation) error
 	GetOperationByID(ctx context.Context, id int) (*model.Operation, error)
-	GetAllOperations(ctx context.Context, rpo *model.RequestParamOperations) ([]*model.Operation, error)
+	GetAllOperations(ctx context.Context, rpo *model.RequestParamOperations) ([]model.Operation, error)
 	UpdateOperationByID(ctx context.Context, op *model.Operation) error
 	DeleteOperationByID(ctx context.Context, id int) error
 	GetAnalytics(ctx context.Context, rpa *model.RequestParamAnalytics) (*model.AnalyticsSummary, error)
@@ -242,7 +242,7 @@ func convertAnalyticsToCSV(input *model.AnalyticsSummary) [][]string {
 	return result
 }
 
-func convertOperationsToCSV(input []*model.Operation) [][]string {
+func convertOperationsToCSV(input []model.Operation) [][]string {
 	result := make([][]string, 0, len(input)+1)
 	start := []string{"id", "amount", "type", "category", "actor", "date", "created", "description"}
 	result = append(result, start)

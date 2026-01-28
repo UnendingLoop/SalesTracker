@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -14,7 +16,7 @@ type PostgresRepo struct {
 	db *dbpg.DB
 }
 
-func (pr *PostgresRepo) Create(ctx context.Context, op model.Operation) error {
+func (pr *PostgresRepo) Create(ctx context.Context, op *model.Operation) error {
 	query := `INSERT INTO operations (amount, actor_id, category_id, type, operation_at, description)
 	VALUES (
     $1,
@@ -54,13 +56,18 @@ func (pr *PostgresRepo) Get(ctx context.Context, id int) (*model.Operation, erro
 		&result.OperationAt,
 		&result.CreatedAt,
 		&result.Description); err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, model.ErrOperationIDNotFound
+		default:
+			return nil, err
+		}
 	}
 
 	return &result, nil
 }
 
-func (pr *PostgresRepo) List(ctx context.Context, f model.RequestParamOperations) ([]*model.Operation, error) {
+func (pr *PostgresRepo) List(ctx context.Context, f *model.RequestParamOperations) ([]model.Operation, error) {
 	periodExpr := definePeriodExpr(f.StartTime, f.EndTime)
 	limofExpr := defineLimitOffsetExpr(f.Limit, f.Page)
 	orderExpr, err := defineOrderExpr(f.OrderBy, f.ASC, f.DESC)
@@ -82,7 +89,7 @@ func (pr *PostgresRepo) List(ctx context.Context, f model.RequestParamOperations
 	}
 	defer rows.Close()
 
-	result := make([]*model.Operation, 0)
+	result := make([]model.Operation, 0)
 	for rows.Next() {
 		item := model.Operation{}
 		if err := rows.Scan(
@@ -96,7 +103,7 @@ func (pr *PostgresRepo) List(ctx context.Context, f model.RequestParamOperations
 			&item.Description); err != nil {
 			return nil, err
 		}
-		result = append(result, &item)
+		result = append(result, item)
 	}
 
 	if rows.Err() != nil {
@@ -106,7 +113,7 @@ func (pr *PostgresRepo) List(ctx context.Context, f model.RequestParamOperations
 	return result, nil
 }
 
-func (pr *PostgresRepo) Update(ctx context.Context, op model.Operation) error {
+func (pr *PostgresRepo) Update(ctx context.Context, op *model.Operation) error {
 	query := `UPDATE operations SET 
 	amount = $2, 
 	actor_id = (SELECT id FROM family_members WHERE fam_member = $3), 
@@ -127,7 +134,7 @@ func (pr *PostgresRepo) Update(ctx context.Context, op model.Operation) error {
 		op.Description)
 	if err != nil {
 		switch {
-		case strings.Contains(err.Error(), "null value in column"):
+		case strings.Contains(err.Error(), "null value"):
 			return model.ErrUnknownActorOrCategory
 		default:
 			return err
@@ -158,7 +165,7 @@ func (pr *PostgresRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (pr *PostgresRepo) AnalyticsGroup(ctx context.Context, f model.RequestParamAnalytics) ([]*model.AnalyticsQuantum, error) {
+func (pr *PostgresRepo) AnalyticsGroup(ctx context.Context, f *model.RequestParamAnalytics) ([]model.AnalyticsQuantum, error) {
 	groupExpr, err := defineGroupExpr(f.GroupBy)
 	if err != nil {
 		return nil, err
@@ -186,13 +193,13 @@ func (pr *PostgresRepo) AnalyticsGroup(ctx context.Context, f model.RequestParam
 	}
 	defer rows.Close()
 
-	result := make([]*model.AnalyticsQuantum, 0)
+	result := make([]model.AnalyticsQuantum, 0)
 	for rows.Next() {
 		var item model.AnalyticsQuantum
 		if err := rows.Scan(&item.Key, &item.Sum, &item.Avg, &item.Count, &item.Median, &item.P90); err != nil {
 			return nil, err
 		}
-		result = append(result, &item)
+		result = append(result, item)
 	}
 	if rows.Err() != nil {
 		return nil, rows.Err()
@@ -201,7 +208,7 @@ func (pr *PostgresRepo) AnalyticsGroup(ctx context.Context, f model.RequestParam
 	return result, nil
 }
 
-func (pr *PostgresRepo) AnalyticsSummary(ctx context.Context, f model.RequestParamAnalytics) (*model.AnalyticsSummary, error) {
+func (pr *PostgresRepo) AnalyticsSummary(ctx context.Context, f *model.RequestParamAnalytics) (*model.AnalyticsSummary, error) {
 	periodExpr := definePeriodExpr(f.StartTime, f.EndTime)
 	query := fmt.Sprintf(`SELECT
        SUM(amount)::float8/100,
@@ -283,13 +290,13 @@ func defineLimitOffsetExpr(lim, p *int) string {
 
 func defineOrderExpr(orderBy *string, asc, desc bool) (string, error) {
 	if orderBy == nil {
-		return "", model.ErrInvalidOrderBy
+		return "", nil
 	}
 
 	direction := ""
 	switch {
 	case asc == desc:
-		direction = "ASC" // значение по умолчанию
+		direction = "DESC" // значение по умолчанию
 	case asc:
 		direction = "ASC"
 	default:

@@ -16,13 +16,13 @@ import (
 )
 
 type OperationsRepository interface {
-	Create(ctx context.Context, op model.Operation) error
+	Create(ctx context.Context, op *model.Operation) error
 	Get(ctx context.Context, id int) (*model.Operation, error)
-	List(ctx context.Context, f model.RequestParamOperations) ([]*model.Operation, error)
-	Update(ctx context.Context, op model.Operation) error
+	List(ctx context.Context, f *model.RequestParamOperations) ([]model.Operation, error)
+	Update(ctx context.Context, op *model.Operation) error
 	Delete(ctx context.Context, id int) error
-	AnalyticsGroup(ctx context.Context, f model.RequestParamAnalytics) ([]*model.AnalyticsQuantum, error)
-	AnalyticsSummary(ctx context.Context, f model.RequestParamAnalytics) (*model.AnalyticsSummary, error)
+	AnalyticsGroup(ctx context.Context, f *model.RequestParamAnalytics) ([]model.AnalyticsQuantum, error)
+	AnalyticsSummary(ctx context.Context, f *model.RequestParamAnalytics) (*model.AnalyticsSummary, error)
 }
 
 func NewOperationsRepo(dbconn *dbpg.DB) OperationsRepository {
