@@ -12,7 +12,7 @@ CREATE TYPE operation_type AS ENUM ('debit', 'credit');
 
 CREATE TABLE IF NOT EXISTS operations (
     id SERIAL PRIMARY KEY,
-    amount BIGINT NOT NULL CHECK (amount >= 0), --хранение в копейках
+    amount BIGINT NOT NULL CHECK (amount != 0), --хранение в копейках
     actor_id INT,
     category_id INT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

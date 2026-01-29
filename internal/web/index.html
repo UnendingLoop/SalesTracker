@@ -193,6 +193,7 @@
 
             document.getElementById("createResult").textContent = await res.text();
             loadOperations()
+            loadAnalytics()
         };
 
         // ================= LOAD OPERATIONS =================
@@ -313,6 +314,12 @@
 
             downloadFile(url, "analytics.csv");
         }
+
+        function init() {
+            loadAnalytics()
+            loadOperations()
+        }
+        init()
 
     </script>
 

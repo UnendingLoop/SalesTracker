@@ -132,6 +132,7 @@ func (svc *OperationService) GetAnalytics(ctx context.Context, rpa *model.Reques
 
 	// собираем воедино
 	summary.Groups = groups
+	summary.Key = *rpa.GroupBy
 	return summary, nil
 }
 
