@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -233,11 +234,11 @@ func convertAnalyticsToCSV(input *model.AnalyticsSummary) [][]string {
 
 	for _, v := range input.Groups {
 		row := make([]string, 0, len(start))
-		row = append(row, v.Key, strconv.Itoa(v.Sum), strconv.FormatFloat(v.Avg, 'f', 2, 64), strconv.Itoa(v.Count), strconv.FormatFloat(v.Median, 'f', 2, 64), strconv.FormatFloat(v.P90, 'f', 2, 64))
+		row = append(row, v.Key, strconv.FormatFloat(v.Sum/100, 'f', 2, 64), strconv.FormatFloat(v.Avg/100, 'f', 2, 64), strconv.Itoa(v.Count), strconv.FormatFloat(v.Median/100, 'f', 2, 64), strconv.FormatFloat(v.P90/100, 'f', 2, 64))
 		result = append(result, row)
 	}
 
-	end := []string{"TOTALS:", strconv.Itoa(input.Sum), strconv.FormatFloat(input.Avg, 'f', 2, 64), strconv.Itoa(input.Count), strconv.FormatFloat(input.Median, 'f', 2, 64), strconv.FormatFloat(input.P90, 'f', 2, 64)}
+	end := []string{"TOTALS:", strconv.FormatFloat(input.Sum/100, 'f', 2, 64), strconv.FormatFloat(input.Avg/100, 'f', 2, 64), strconv.Itoa(input.Count), strconv.FormatFloat(input.Median/100, 'f', 2, 64), strconv.FormatFloat(input.P90/100, 'f', 2, 64)}
 	result = append(result, end)
 	return result
 }
@@ -253,7 +254,7 @@ func convertOperationsToCSV(input []model.Operation) [][]string {
 		if v.Description != nil {
 			descr = *v.Description
 		}
-		row = append(row, strconv.FormatInt(v.ID, 10), strconv.FormatInt(v.Amount, 10), v.Type, v.Category, v.Actor, v.OperationAt.Format("2006-01-02"), v.CreatedAt.Format("2006-01-02"), descr)
+		row = append(row, strconv.FormatInt(v.ID, 10), strconv.FormatFloat(float64(v.Amount)/100, 'f', 2, 64), v.Type, v.Category, v.Actor, v.OperationAt.Format("2006-01-02"), v.CreatedAt.Format("2006-01-02"), descr)
 		result = append(result, row)
 	}
 
@@ -269,5 +270,12 @@ func decodeQueryParams[T *model.RequestParamAnalytics | *model.RequestParamOpera
 }
 
 func errCodeDefiner(err error) int {
-	return 0
+	switch {
+	case errors.Is(err, model.ErrCommon500):
+		return 500
+	case errors.Is(err, model.ErrOperationIDNotFound):
+		return 404
+	default:
+		return 400
+	}
 }

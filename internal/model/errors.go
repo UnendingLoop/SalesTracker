@@ -3,7 +3,7 @@ package model
 import "errors"
 
 var (
-	ErrCommon500              = errors.New("something went wrong, try again later")
+	ErrCommon500              = errors.New("something went wrong, try again later") // надо избавиться от этого
 	ErrInvalidGroupBy         = errors.New("invalid grouping parameter specified")
 	ErrInvalidOrderBy         = errors.New("invalid ordering parameter specified")
 	ErrOperationIDNotFound    = errors.New("specified operation ID not found")

@@ -174,11 +174,11 @@ func (pr *PostgresRepo) AnalyticsGroup(ctx context.Context, f *model.RequestPara
 	periodExpr := definePeriodExpr(f.StartTime, f.EndTime)
 
 	query := fmt.Sprintf(`SELECT %s AS group_key,
-       SUM(amount)::float8/100,
-       AVG(amount)::float8/100,
+       SUM(amount)::float8,
+       AVG(amount)::float8,
        COUNT(*),
-	   percentile_cont(0.5) WITHIN GROUP (ORDER BY amount)::float8 / 100,
-	   percentile_cont(0.9) WITHIN GROUP (ORDER BY amount)::float8 / 100
+	   percentile_cont(0.5) WITHIN GROUP (ORDER BY amount)::float8,
+	   percentile_cont(0.9) WITHIN GROUP (ORDER BY amount)::float8
 	   FROM operations o 
 	   LEFT JOIN category c ON c.id = o.category_id 
 	   LEFT JOIN family_members f ON f.id = o.actor_id
@@ -211,11 +211,11 @@ func (pr *PostgresRepo) AnalyticsGroup(ctx context.Context, f *model.RequestPara
 func (pr *PostgresRepo) AnalyticsSummary(ctx context.Context, f *model.RequestParamAnalytics) (*model.AnalyticsSummary, error) {
 	periodExpr := definePeriodExpr(f.StartTime, f.EndTime)
 	query := fmt.Sprintf(`SELECT
-       SUM(amount)::float8/100,
-       AVG(amount)::float8/100,
+       SUM(amount)::float8,
+       AVG(amount)::float8,
        COUNT(*),
-	   percentile_cont(0.5) WITHIN GROUP (ORDER BY amount)::float8 / 100,
-	   percentile_cont(0.9) WITHIN GROUP (ORDER BY amount)::float8 / 100
+	   percentile_cont(0.5) WITHIN GROUP (ORDER BY amount)::float8,
+	   percentile_cont(0.9) WITHIN GROUP (ORDER BY amount)::float8
 	   FROM operations
 	   %s`, periodExpr)
 

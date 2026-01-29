@@ -3,14 +3,14 @@ package model
 import "time"
 
 type Operation struct {
-	ID          int64
-	Amount      int64 // в копейках
-	Actor       string
-	Category    string
-	Type        string    // debit/credit
-	OperationAt time.Time // время самой операции
+	ID          int64     `json:"id,omitempty"`
+	Amount      int64     `json:"amount"` // в копейках
+	Actor       string    `json:"actor"`
+	Category    string    `json:"category"`
+	Type        string    `json:"type"`         // debit/credit
+	OperationAt time.Time `json:"operation_at"` // время самой операции
 	CreatedAt   time.Time // время создания записи в БД
-	Description *string
+	Description *string   `json:"description,omitempty"`
 }
 
 var ActorsMap = map[string]struct{}{FamMother: {}, FamFather: {}, FamDaughter: {}, FamSon: {}}
@@ -50,7 +50,7 @@ const (
 
 type AnalyticsQuantum struct { // возвращается в виде массива если в запросе указана группировка
 	Key    string  `json:"key"`
-	Sum    int     `json:"sum"`    // сумма в копейках
+	Sum    float64 `json:"sum"`    // сумма в копейках
 	Avg    float64 `json:"avg"`    // среднее в копейках
 	Count  int     `json:"count"`  // кол-во записей, на которых основано вычисление
 	Median float64 `json:"median"` // медиана в копейках
@@ -59,7 +59,7 @@ type AnalyticsQuantum struct { // возвращается в виде масс�
 
 type AnalyticsSummary struct {
 	Key    string             `json:"key,omitempty"` // поле, использованное для группировки
-	Sum    int                `json:"sum"`
+	Sum    float64            `json:"sum"`
 	Avg    float64            `json:"avg"` // среднее в копейках
 	Count  int                `json:"count"`
 	Median float64            `json:"median"` // медиана в копейках

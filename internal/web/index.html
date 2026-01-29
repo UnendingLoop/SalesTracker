@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Трекер финансов</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #111;
+            color: #eee;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-top: 30px;
+        }
+
+        input,
+        select,
+        button {
+            padding: 5px;
+            margin: 3px;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #555;
+            padding: 6px;
+        }
+
+        th {
+            background: #222;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Трекер финансов</h1>
+
+    <!-- ================= CREATE OPERATION ================= -->
+    <h2>Создать операцию</h2>
+
+    <form id="createForm">
+        Актор:
+        <select name="actor">
+            <option value="mother">мама</option>
+            <option value="father">папа</option>
+            <option value="daughter">дочь</option>
+            <option value="son">сын</option>
+            <option value="other">др.</option>
+        </select>
+        <br>
+        Тип операции:
+        <select name="type">
+            <option value="debit">доход</option>
+            <option value="credit">расход</option>
+        </select>
+        <br>
+        Категория:
+        <select name="category">
+            <option value="salary">зарплата</option>
+            <option value="chores">бытовые принадлежности</option>
+            <option value="transport">транспорт</option>
+            <option value="food">гастрономия</option>
+            <option value="entertainment">развлечения</option>
+            <option value="health">здоровье</option>
+            <option value="education">образование</option>
+            <option value="presents">подарки</option>
+            <option value="electronics">электроника</option>
+            <option value="communication">интернет/ТВ/моб.связь</option>
+            <option value="other">другое</option>
+        </select>
+        <br>
+        Сумма (RUB):
+        <input name="amount" type="number" step="0.01" required>
+        <br>
+        Дата операции:
+        <input name="operation_at" type="datetime-local" required>
+        <br>
+        Описание/комментарий:
+        <input name="description">
+
+        <button type="submit">Создать</button>
+    </form>
+
+    <pre id="createResult"></pre>
+
+    <!-- ================= OPERATIONS ================= -->
+    <h2>Операции</h2>
+
+    От <input id="opFrom" type="datetime-local"><br>
+    До <input id="opTo" type="datetime-local"><br>
+
+    Сортировать по:
+    <select id="orderBy">
+        <option value="id">id операции</option>
+        <option value="amount">сумме</option>
+        <option value="actor">актору</option>
+        <option value="category">категории</option>
+        <option value="type">типу операции</option>
+        <option value="operation_at">времени операции</option>
+    </select>
+
+    <select id="orderDir">
+        <option value="asc">По возрастанию</option>
+        <option value="desc">По убыванию</option>
+    </select>
+
+    <button onclick="loadOperations()">Загрузить</button>
+    <button onclick="loadOperationsCSV()">Выгрузить в CSV</button>
+
+
+    <table id="opTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Дата операции</th>
+                <th>Актор</th>
+                <th>Тип</th>
+                <th>Категория</th>
+                <th>Сумма в ₽</th>
+                <th>Описание/комментарий</th>
+                <th>Действие</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- ================= ANALYTICS ================= -->
+    <h2>Аналитика</h2>
+
+    От <input id="anFrom" type="datetime-local"><br>
+    До <input id="anTo" type="datetime-local"><br>
+
+    Группировать по:
+    <select id="groupBy">
+        <option value="">---</option>
+        <option value="day">дням</option>
+        <option value="week">неделям</option>
+        <option value="month">месяцам</option>
+        <option value="year">годам</option>
+        <option value="actor">актору</option>
+        <option value="category">категории</option>
+        <option value="type">типу</option>
+    </select>
+
+    <button onclick="loadAnalytics()">Зарузить</button>
+    <button onclick="loadAnalyticsCSV()">Выгрузить в CSV</button>
+
+    <table id="anTable">
+        <thead>
+            <tr>
+                <th>Ключ группировки</th>
+                <th>Сумма ₽</th>
+                <th>Среднее ₽</th>
+                <th>Медиана ₽</th>
+                <th>90й перцентиль ₽</th>
+                <th>Кол-во</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const API = "http://localhost:8080";
+
+        // ===== helpers =====
+        function kopeikiToRubles(c) { return (c / 100).toFixed(2); }
+        function RubliToKopeiki(e) { return Math.round(parseFloat(e) * 100); }
+
+        // ================= CREATE =================
+        document.getElementById("createForm").onsubmit = async e => {
+            e.preventDefault();
+            const f = new FormData(e.target);
+            const data = Object.fromEntries(f.entries());
+
+            data.amount = RubliToKopeiki(data.amount);
+            data.operation_at = new Date(data.operation_at).toISOString();
+
+            const res = await fetch(API + "/operations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            document.getElementById("createResult").textContent = await res.text();
+            loadOperations()
+        };
+
+        // ================= LOAD OPERATIONS =================
+        async function loadOperations() {
+            const url = new URL(API + "/operations");
+
+            if (opFrom.value) url.searchParams.set("from", new Date(opFrom.value).toISOString());
+            if (opTo.value) url.searchParams.set("to", new Date(opTo.value).toISOString());
+
+            url.searchParams.set("order_by", orderBy.value);
+            url.searchParams.set(orderDir.value, "true");
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            const tbody = document.querySelector("#opTable tbody");
+            tbody.innerHTML = "";
+
+            data.forEach(op => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+      <td>${op.id}</td>
+      <td>${op.operation_at}</td>
+      <td>${op.actor}</td>
+      <td>${op.type}</td>
+      <td>${op.category}</td>
+      <td>${kopeikiToRubles(op.amount)}</td>
+      <td>${op.description ?? ""}</td>
+      <td><button onclick="deleteOperation('${op.id}')">Удалить</button></td>
+    `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        //================== Удаление операции ===============
+        async function deleteOperation(id) {
+            await fetch(API + "/operations/" + id, { method: "DELETE" });
+            loadOperations()
+        }
+        //================== Скачивание операций ===============
+        async function loadOperationsCSV() {
+            const url = new URL(API + "/operations/csv");
+
+            if (opFrom.value) url.searchParams.set("from", new Date(opFrom.value).toISOString());
+            if (opTo.value) url.searchParams.set("to", new Date(opTo.value).toISOString());
+
+            url.searchParams.set("order_by", orderBy.value);
+            url.searchParams.set(orderDir.value, "true");
+
+            // optional
+            url.searchParams.set("download", "true");
+
+            downloadFile(url, "operations.csv");
+        }
+
+        //=====================================================
+        function downloadFile(url, filename) {
+            fetch(url)
+                .then(r => r.blob())
+                .then(blob => {
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                });
+        }
+
+
+
+        // ================= LOAD ANALYTICS =================
+        async function loadAnalytics() {
+            const url = new URL(API + "/analytics");
+
+            if (anFrom.value) url.searchParams.set("from", new Date(anFrom.value).toISOString());
+            if (anTo.value) url.searchParams.set("to", new Date(anTo.value).toISOString());
+            if (groupBy.value) url.searchParams.set("group_by", groupBy.value);
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            const tbody = document.querySelector("#anTable tbody");
+            tbody.innerHTML = "";
+
+            function renderRow(key, r, isTotal = false) {
+                const tr = document.createElement("tr");
+                if (isTotal) tr.style.background = "#222", tr.style.fontWeight = "bold";
+
+                tr.innerHTML = `
+      <td>${key}</td>
+      <td>${kopeikiToRubles(r.sum)}</td>
+      <td>${kopeikiToRubles(r.avg)}</td>
+      <td>${kopeikiToRubles(r.median)}</td>
+      <td>${kopeikiToRubles(r.p90)}</td>
+      <td>${r.count}</td>
+    `;
+                tbody.appendChild(tr);
+            }
+
+            // 1) группы
+            if (data.groups) {
+                data.groups.forEach(g => renderRow(g.key, g));
+            }
+
+            // 2) итоговая строка
+            renderRow("TOTAL", data, true);
+        }
+
+        //================== Скачивание аналитики ===============
+        async function loadAnalyticsCSV() {
+            const url = new URL(API + "/analytics/csv");
+
+            if (anFrom.value) url.searchParams.set("from", new Date(anFrom.value).toISOString());
+            if (anTo.value) url.searchParams.set("to", new Date(anTo.value).toISOString());
+            if (groupBy.value) url.searchParams.set("group_by", groupBy.value);
+
+            url.searchParams.set("download", "true");
+
+            downloadFile(url, "analytics.csv");
+        }
+
+    </script>
+
+</body>
+
+</html>

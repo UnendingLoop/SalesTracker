@@ -151,6 +151,10 @@ func validateOperation(op *model.Operation) error {
 	if op.OperationAt.IsZero() {
 		return model.ErrInvalidOpTime
 	}
+
+	if op.Type == model.OpTypeCredit {
+		op.Amount = op.Amount * -1
+	}
 	return nil
 }
 
